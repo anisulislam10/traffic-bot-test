@@ -265,7 +265,7 @@ testAdRendering().then(result => console.log('Test completed at', new Date().toL
 let intervalId = setInterval(testAdRendering, 60000);
 
 // Vercel export (uncomment and remove local testing for deployment)
-// module.exports = async (req, res) => {
-//   const result = await testAdRendering();
-//   res.status(200).json({ status: 'success', result });
-// };
+module.exports = async (req, res) => {
+  const result = await testAdRendering();
+  res.status(200).json({ status: 'success', result });
+};
