@@ -1,21 +1,18 @@
 const puppeteer = require('puppeteer');
-const fs = require('fs');
 
 // Custom timeout function
 const delay = ms => new Promise(resolve => setTimeout(resolve, ms));
 
-// Single-instance lock
-const lockFile = 'bot.lock';
+// In-memory lock
 let isRunning = false;
 
 const testAdRendering = async () => {
   console.log('Starting testAdRendering');
-  if (isRunning || fs.existsSync(lockFile)) {
+  if (isRunning) {
     console.log('Skipping cycle, another instance or previous run is in progress');
     return;
   }
   isRunning = true;
-  fs.writeFileSync(lockFile, 'running');
 
   let browser;
   try {
@@ -40,7 +37,7 @@ const testAdRendering = async () => {
     while (navAttempts < maxAttempts && !navSuccess) {
       try {
         console.log('Navigating to page...');
-        await page.goto('https://client-anis-portfolio.vercel.app', { waitUntil: 'networkidle2', timeout: 45000 });
+        await page.goto('https://client-anis-portfolio.vercel.app', { waitUntil: 'networkidle2', timeout: 10000 });
         navSuccess = true;
         console.log('Navigation successful');
       } catch (navError) {
@@ -55,23 +52,17 @@ const testAdRendering = async () => {
             error: `Navigation failed after ${maxAttempts} attempts: ${navError.message}`
           };
         }
-        await delay(2000); // Reduced from 5000 for faster testing
+        await delay(500);
       }
     }
 
     await page.evaluate(() => {
-      window.scrollTo(0, document.body.scrollHeight);
-      window.scrollTo(0, 0);
-      window.scrollTo(0, document.body.scrollHeight / 2);
-      window.scrollTo(0, 9000);
-      window.scrollTo(0, 10000);
-      window.scrollTo(0, 11000);
+      window.scrollTo(0, document.body.scrollHeight / 2); // Simplified to one scroll
     });
     await page.mouse.move(500, 500);
     await page.mouse.move(600, 600);
     await page.mouse.click(600, 600);
-    await page.mouse.move(700, 700);
-    await delay(2000); // Reduced from 10000
+    await delay(500);
 
     const scrollResult = await page.evaluate(() => {
       const footer = document.querySelector('footer') || document.querySelector('[class*="footer"]');
@@ -89,10 +80,10 @@ const testAdRendering = async () => {
       return footerInfo;
     });
 
-    await delay(2000); // Reduced from 90000
+    await delay(500);
 
     const belowFooterElements = await page.evaluate((footerBottom) => {
-      const maxDistance = 2000;
+      const maxDistance = 1000; // Reduced from 2000
       const step = 5;
       let elements = [];
       for (let offset = 0; offset <= maxDistance; offset += step) {
@@ -119,7 +110,7 @@ const testAdRendering = async () => {
       )).filter(ad => {
         const rect = ad.getBoundingClientRect();
         const adTop = rect.top + window.scrollY;
-        return adTop > footerBottom && adTop < footerBottom + 2000 && rect.height > 0 && rect.width > 0 &&
+        return adTop > footerBottom && adTop < footerBottom + 1000 && rect.height > 0 && rect.width > 0 &&
                window.getComputedStyle(ad).display !== 'none' && window.getComputedStyle(ad).visibility !== 'hidden';
       });
 
@@ -204,7 +195,7 @@ const testAdRendering = async () => {
       const iframes = Array.from(document.querySelectorAll('iframe')).filter(iframe => {
         const rect = iframe.getBoundingClientRect();
         const iframeTop = rect.top + window.scrollY;
-        return iframeTop > footerBottom && iframeTop < footerBottom + 2000;
+        return iframeTop > footerBottom && iframeTop < footerBottom + 1000;
       });
       for (const iframe of iframes) {
         try {
@@ -265,26 +256,16 @@ const testAdRendering = async () => {
   } finally {
     if (browser) await browser.close();
     isRunning = false;
-    if (fs.existsSync(lockFile)) fs.unlinkSync(lockFile);
   }
 };
 
-// Run immediately for local testing
+// Local testing
 console.log('Script started at', new Date().toLocaleString('en-PK', { timeZone: 'Asia/Karachi' }));
 testAdRendering().then(result => console.log('Test completed at', new Date().toLocaleString('en-PK', { timeZone: 'Asia/Karachi' }), 'with result:', result));
+let intervalId = setInterval(testAdRendering, 60000);
 
-// Optional: Continuous execution (comment out for Vercel)
-let intervalId = null;
-if (intervalId) clearInterval(intervalId);
-if (fs.existsSync(lockFile)) fs.unlinkSync(lockFile);
-intervalId = setInterval(async () => {
-  const timestamp = new Date().toLocaleString('en-PK', { timeZone: 'Asia/Karachi' });
-  console.log('Starting new ad check cycle:', timestamp);
-  await testAdRendering();
-}, 60000);
-
-// Vercel export (uncomment and remove testAdRendering call for deployment)
-module.exports = async (req, res) => {
-  const result = await testAdRendering();
-  res.status(200).json({ status: 'success', result });
-};
+// Vercel export (uncomment and remove local testing for deployment)
+// module.exports = async (req, res) => {
+//   const result = await testAdRendering();
+//   res.status(200).json({ status: 'success', result });
+// };
