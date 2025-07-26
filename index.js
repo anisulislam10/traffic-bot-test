@@ -9,6 +9,7 @@ const lockFile = 'bot.lock';
 let isRunning = false;
 
 const testAdRendering = async () => {
+  console.log('Starting testAdRendering');
   if (isRunning || fs.existsSync(lockFile)) {
     console.log('Skipping cycle, another instance or previous run is in progress');
     return;
@@ -18,33 +19,30 @@ const testAdRendering = async () => {
 
   let browser;
   try {
-    browser = await puppeteer.launch({ 
+    console.log('Launching browser...');
+    browser = await puppeteer.launch({
       headless: true,
-      args: ['--no-sandbox', '--disable-setuid-sandbox', '--disable-dev-shm-usage', '--disable-web-security']
+      args: ['--no-sandbox', '--disable-setuid-sandbox', '--disable-dev-shm-usage', '--disable-web-security'],
+      executablePath: require('puppeteer').executablePath(),
     });
+    console.log('Browser launched successfully');
     const page = await browser.newPage();
 
-    // Set user-agent to mimic real browser
     await page.setUserAgent('Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36');
-
-    // Set viewport to capture full page
     await page.setViewport({ width: 1280, height: 4000 });
 
-    // Handle errors
     page.on('error', err => console.error('Page error:', err.message));
     page.on('pageerror', err => console.error('Page JavaScript error:', err.message));
 
-    // Navigate with retry
     let navAttempts = 0;
     const maxAttempts = 3;
     let navSuccess = false;
     while (navAttempts < maxAttempts && !navSuccess) {
       try {
-        await page.goto('https://client-anis-portfolio.vercel.app', { 
-          waitUntil: 'networkidle2',
-          timeout: 45000 
-        });
+        console.log('Navigating to page...');
+        await page.goto('https://client-anis-portfolio.vercel.app', { waitUntil: 'networkidle2', timeout: 45000 });
         navSuccess = true;
+        console.log('Navigation successful');
       } catch (navError) {
         navAttempts++;
         console.warn(`Navigation attempt ${navAttempts} failed: ${navError.message}`);
@@ -57,16 +55,15 @@ const testAdRendering = async () => {
             error: `Navigation failed after ${maxAttempts} attempts: ${navError.message}`
           };
         }
-        await delay(5000);
+        await delay(2000); // Reduced from 5000 for faster testing
       }
     }
 
-    // Simulate extensive human-like interaction
     await page.evaluate(() => {
       window.scrollTo(0, document.body.scrollHeight);
       window.scrollTo(0, 0);
       window.scrollTo(0, document.body.scrollHeight / 2);
-      window.scrollTo(0, 9000); // Near current footer
+      window.scrollTo(0, 9000);
       window.scrollTo(0, 10000);
       window.scrollTo(0, 11000);
     });
@@ -74,9 +71,8 @@ const testAdRendering = async () => {
     await page.mouse.move(600, 600);
     await page.mouse.click(600, 600);
     await page.mouse.move(700, 700);
-    await delay(10000);
+    await delay(2000); // Reduced from 10000
 
-    // Get footer info
     const scrollResult = await page.evaluate(() => {
       const footer = document.querySelector('footer') || document.querySelector('[class*="footer"]');
       let footerInfo = { found: false, bottom: 0, html: '' };
@@ -93,81 +89,10 @@ const testAdRendering = async () => {
       return footerInfo;
     });
 
-    // Wait for ad loading
-    await delay(90000);
+    await delay(2000); // Reduced from 90000
 
-    // Save full-page screenshot and HTML for debugging
-    await page.screenshot({ path: 'full-page-screenshot.png', fullPage: true });
-    const pageHtml = await page.evaluate(() => document.documentElement.outerHTML);
-    fs.writeFileSync('page.html', pageHtml);
-
-    // Collect ad-container specifically
-    const adContainerInfo = await page.evaluate(() => {
-      const adContainer = document.querySelector('#ad-container');
-      if (!adContainer) {
-        return {
-          found: false,
-          details: null,
-          children: []
-        };
-      }
-      const children = Array.from(adContainer.querySelectorAll('ins, iframe, [data-ad-slot], .adsbygoogle, [class*="ad"], [class*="advert"], [class*="banner"], a, div'));
-      return {
-        found: true,
-        details: {
-          id: adContainer.id || 'No ID',
-          className: typeof adContainer.className === 'string' ? adContainer.className : 'Invalid className',
-          tagName: adContainer.tagName,
-          top: adContainer.getBoundingClientRect().top + window.scrollY,
-          html: adContainer.outerHTML.slice(0, 2000)
-        },
-        children: children.map(child => ({
-          id: child.id || 'No ID',
-          className: typeof child.className === 'string' ? child.className : 'Invalid className',
-          tagName: child.tagName,
-          top: child.getBoundingClientRect().top + window.scrollY,
-          html: child.outerHTML.slice(0, 500)
-        }))
-      };
-    });
-
-    console.log('Ad Container Info:', JSON.stringify(adContainerInfo, null, 2));
-
-    // Collect all potential ad containers site-wide
-    const allAdContainersInfo = await page.evaluate(() => {
-      const adContainers = Array.from(document.querySelectorAll(
-        '[data-ad-slot], .adsbygoogle, ins, [id*="ad"], [class*="ad"], .ad-unit, [class*="advert"], [class*="banner"]'
-      )).filter(ad => {
-        const className = typeof ad.className === 'string' ? ad.className.toLowerCase() : '';
-        return className && 
-               !className.includes('nav') && 
-               !className.includes('fixed') && 
-               !className.includes('top-0') && 
-               !className.includes('header') && 
-               !className.includes('font-mono') && 
-               !className.includes('bg-gradient') && 
-               !className.includes('skill-item') && 
-               !className.includes('text-gray') && 
-               !className.includes('shadow-md') && 
-               !className.includes('backdrop-blur');
-      });
-      return {
-        adContainersFound: adContainers.length,
-        adDetails: adContainers.map(ad => ({
-          id: ad.id || 'No ID',
-          className: typeof ad.className === 'string' ? ad.className : 'Invalid className',
-          tagName: ad.tagName,
-          top: ad.getBoundingClientRect().top + window.scrollY,
-          html: ad.outerHTML.slice(0, 500)
-        }))
-      };
-    });
-
-    console.log('Filtered Ad Containers:', JSON.stringify(allAdContainersInfo.adDetails, null, 2));
-
-    // Collect elements in 5-pixel increments below footer (extended to 2000px)
     const belowFooterElements = await page.evaluate((footerBottom) => {
-      const maxDistance = 2000; // Extended to 2000px below footer
+      const maxDistance = 2000;
       const step = 5;
       let elements = [];
       for (let offset = 0; offset <= maxDistance; offset += step) {
@@ -188,21 +113,14 @@ const testAdRendering = async () => {
       return elements;
     }, scrollResult.bottom);
 
-    console.log('Elements Below Footer (5px increments up to 2000px):', JSON.stringify(belowFooterElements, null, 2));
-
-    // Attempt to click ads below footer
     const adInteraction = await page.evaluate((footerBottom) => {
       const adElements = Array.from(document.querySelectorAll(
         '[data-ad-slot], .adsbygoogle, ins, [id*="ad"], [class*="ad"], .ad-unit, [class*="advert"], [class*="banner"], iframe, a'
       )).filter(ad => {
         const rect = ad.getBoundingClientRect();
         const adTop = rect.top + window.scrollY;
-        return adTop > footerBottom && 
-               adTop < footerBottom + 2000 && 
-               rect.height > 0 && 
-               rect.width > 0 && 
-               window.getComputedStyle(ad).display !== 'none' && 
-               window.getComputedStyle(ad).visibility !== 'hidden';
+        return adTop > footerBottom && adTop < footerBottom + 2000 && rect.height > 0 && rect.width > 0 &&
+               window.getComputedStyle(ad).display !== 'none' && window.getComputedStyle(ad).visibility !== 'hidden';
       });
 
       if (adElements.length === 0) {
@@ -211,12 +129,8 @@ const testAdRendering = async () => {
           const containerAdElements = adContainer.querySelectorAll('ins, iframe, [data-ad-slot], .adsbygoogle, [class*="ad"], [class*="advert"], [class*="banner"], a, div');
           const visibleAd = Array.from(containerAdElements).find(ad => {
             const rect = ad.getBoundingClientRect();
-            return rect.top >= 0 && 
-                   rect.bottom <= window.innerHeight && 
-                   rect.height > 0 && 
-                   rect.width > 0 && 
-                   window.getComputedStyle(ad).display !== 'none' && 
-                   window.getComputedStyle(ad).visibility !== 'hidden';
+            return rect.top >= 0 && rect.bottom <= window.innerHeight && rect.height > 0 && rect.width > 0 &&
+                   window.getComputedStyle(ad).display !== 'none' && window.getComputedStyle(ad).visibility !== 'hidden';
           });
           if (!visibleAd) {
             return {
@@ -260,7 +174,7 @@ const testAdRendering = async () => {
       }
 
       try {
-        const ad = adElements[0]; // Click the first ad below footer
+        const ad = adElements[0];
         const adId = ad.id || 'No ID';
         const adClass = typeof ad.className === 'string' ? ad.className : 'No Class';
         const adDataSlot = ad.getAttribute('data-ad-slot') || 'No Data Slot';
@@ -286,7 +200,6 @@ const testAdRendering = async () => {
       }
     }, scrollResult.bottom);
 
-    // Check iframe ads with content loading
     const iframeAdInteraction = await page.evaluate((footerBottom) => {
       const iframes = Array.from(document.querySelectorAll('iframe')).filter(iframe => {
         const rect = iframe.getBoundingClientRect();
@@ -301,12 +214,8 @@ const testAdRendering = async () => {
             );
             if (ad) {
               const rect = ad.getBoundingClientRect();
-              if (rect.top >= 0 && 
-                  rect.bottom <= window.innerHeight && 
-                  rect.height > 0 && 
-                  rect.width > 0 && 
-                  window.getComputedStyle(ad).display !== 'none' && 
-                  window.getComputedStyle(ad).visibility !== 'hidden') {
+              if (rect.top >= 0 && rect.bottom <= window.innerHeight && rect.height > 0 && rect.width > 0 &&
+                  window.getComputedStyle(ad).display !== 'none' && window.getComputedStyle(ad).visibility !== 'hidden') {
                 ad.click();
                 return {
                   adContainersFound: 1,
@@ -328,7 +237,6 @@ const testAdRendering = async () => {
       return null;
     }, scrollResult.bottom);
 
-    // Log results
     const timestamp = new Date().toLocaleString('en-PK', { timeZone: 'Asia/Karachi' });
     console.log(`Footer Info at ${timestamp}:`, {
       footerFound: scrollResult.found,
@@ -345,7 +253,6 @@ const testAdRendering = async () => {
     console.log(`Cycle completed at ${timestamp}`);
 
     return iframeAdInteraction || adInteraction;
-
   } catch (error) {
     const timestamp = new Date().toLocaleString('en-PK', { timeZone: 'Asia/Karachi' });
     console.error(`Error at ${timestamp}:`, error.message);
@@ -362,14 +269,22 @@ const testAdRendering = async () => {
   }
 };
 
-// Clear existing intervals and lock
+// Run immediately for local testing
+console.log('Script started at', new Date().toLocaleString('en-PK', { timeZone: 'Asia/Karachi' }));
+testAdRendering().then(result => console.log('Test completed at', new Date().toLocaleString('en-PK', { timeZone: 'Asia/Karachi' }), 'with result:', result));
+
+// Optional: Continuous execution (comment out for Vercel)
 let intervalId = null;
 if (intervalId) clearInterval(intervalId);
 if (fs.existsSync(lockFile)) fs.unlinkSync(lockFile);
-
-// Run every 60 seconds
 intervalId = setInterval(async () => {
   const timestamp = new Date().toLocaleString('en-PK', { timeZone: 'Asia/Karachi' });
   console.log('Starting new ad check cycle:', timestamp);
   await testAdRendering();
 }, 60000);
+
+// Vercel export (uncomment and remove testAdRendering call for deployment)
+module.exports = async (req, res) => {
+  const result = await testAdRendering();
+  res.status(200).json({ status: 'success', result });
+};
