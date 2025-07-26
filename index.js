@@ -17,9 +17,11 @@ const testAdRendering = async () => {
   let browser;
   try {
     console.log('Launching browser...');
+    // Use custom cache directory
     browser = await puppeteer.launch({
       headless: true,
       args: ['--no-sandbox', '--disable-setuid-sandbox', '--disable-dev-shm-usage', '--disable-web-security'],
+      cacheDirectory: './.cache/puppeteer' // Custom cache path
     });
     console.log('Browser launched successfully');
     const page = await browser.newPage();
@@ -116,7 +118,7 @@ const testAdRendering = async () => {
       if (adElements.length === 0) {
         const adContainer = document.querySelector('#ad-container');
         if (adContainer) {
-          const containerAdElements = adContainer.querySelectorAll('ins, iframe, [data-ad-slot], .adsbygoogle, [class*="ad"], [class*="advert], [class*="banner"], a, div');
+          const containerAdElements = adContainer.querySelectorAll('ins, iframe, [data-ad-slot], .adsbygoogle, [class*="ad"], [class*="advert"], [class*="banner"], a, div');
           const visibleAd = Array.from(containerAdElements).find(ad => {
             const rect = ad.getBoundingClientRect();
             return rect.top >= 0 && rect.bottom <= window.innerHeight && rect.height > 0 && rect.width > 0 &&
@@ -258,8 +260,13 @@ const testAdRendering = async () => {
   }
 };
 
-// Vercel export
-module.exports = async (req, res) => {
-  const result = await testAdRendering();
-  res.status(200).json({ status: 'success', result });
-};
+// Local testing
+console.log('Script started at', new Date().toLocaleString('en-PK', { timeZone: 'Asia/Karachi' }));
+testAdRendering().then(result => console.log('Test completed at', new Date().toLocaleString('en-PK', { timeZone: 'Asia/Karachi' }), 'with result:', result));
+let intervalId = setInterval(testAdRendering, 60000);
+
+// Vercel export (uncomment and remove local testing for deployment)
+// module.exports = async (req, res) => {
+//   const result = await testAdRendering();
+//   res.status(200).json({ status: 'success', result });
+// };

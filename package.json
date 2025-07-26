@@ -3,8 +3,8 @@
   "version": "1.0.0",
   "main": "index.js",
   "scripts": {
-"start": "node index.js",
-"build": "npm install && npx puppeteer browsers install chrome"
+    "start": "node index.js",
+    "build": "npm install && npx puppeteer browsers install chrome --platform=linux --browser=chrome && mkdir .cache && move .cache\\puppeteer .cache\\puppeteer"
   },
   "keywords": [],
   "author": "",
