@@ -20,7 +20,6 @@ const testAdRendering = async () => {
     browser = await puppeteer.launch({
       headless: true,
       args: ['--no-sandbox', '--disable-setuid-sandbox', '--disable-dev-shm-usage', '--disable-web-security'],
-      executablePath: require('puppeteer').executablePath(),
     });
     console.log('Browser launched successfully');
     const page = await browser.newPage();
@@ -57,7 +56,7 @@ const testAdRendering = async () => {
     }
 
     await page.evaluate(() => {
-      window.scrollTo(0, document.body.scrollHeight / 2); // Simplified to one scroll
+      window.scrollTo(0, document.body.scrollHeight / 2);
     });
     await page.mouse.move(500, 500);
     await page.mouse.move(600, 600);
@@ -83,7 +82,7 @@ const testAdRendering = async () => {
     await delay(500);
 
     const belowFooterElements = await page.evaluate((footerBottom) => {
-      const maxDistance = 1000; // Reduced from 2000
+      const maxDistance = 500;
       const step = 5;
       let elements = [];
       for (let offset = 0; offset <= maxDistance; offset += step) {
@@ -110,7 +109,7 @@ const testAdRendering = async () => {
       )).filter(ad => {
         const rect = ad.getBoundingClientRect();
         const adTop = rect.top + window.scrollY;
-        return adTop > footerBottom && adTop < footerBottom + 1000 && rect.height > 0 && rect.width > 0 &&
+        return adTop > footerBottom && adTop < footerBottom + 500 && rect.height > 0 && rect.width > 0 &&
                window.getComputedStyle(ad).display !== 'none' && window.getComputedStyle(ad).visibility !== 'hidden';
       });
 
@@ -195,7 +194,7 @@ const testAdRendering = async () => {
       const iframes = Array.from(document.querySelectorAll('iframe')).filter(iframe => {
         const rect = iframe.getBoundingClientRect();
         const iframeTop = rect.top + window.scrollY;
-        return iframeTop > footerBottom && iframeTop < footerBottom + 1000;
+        return iframeTop > footerBottom && iframeTop < footerBottom + 500;
       });
       for (const iframe of iframes) {
         try {
@@ -260,9 +259,9 @@ const testAdRendering = async () => {
 };
 
 // Local testing
-console.log('Script started at', new Date().toLocaleString('en-PK', { timeZone: 'Asia/Karachi' }));
-testAdRendering().then(result => console.log('Test completed at', new Date().toLocaleString('en-PK', { timeZone: 'Asia/Karachi' }), 'with result:', result));
-let intervalId = setInterval(testAdRendering, 60000);
+// console.log('Script started at', new Date().toLocaleString('en-PK', { timeZone: 'Asia/Karachi' }));
+// testAdRendering().then(result => console.log('Test completed at', new Date().toLocaleString('en-PK', { timeZone: 'Asia/Karachi' }), 'with result:', result));
+// let intervalId = setInterval(testAdRendering, 60000);
 
 // Vercel export (uncomment and remove local testing for deployment)
 module.exports = async (req, res) => {
