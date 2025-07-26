@@ -4,7 +4,7 @@
   "main": "index.js",
   "scripts": {
     "start": "node index.js",
-    "build": "npm install && npx puppeteer browsers install chrome --platform=linux --browser=chrome && mkdir .cache && move .cache\\puppeteer .cache\\puppeteer"
+    "build": "npm install && npx puppeteer browsers install chrome --platform=linux --browser=chrome && mkdir .cache 2>/dev/null || true && mv .cache/puppeteer .cache/puppeteer 2>/dev/null || true"
   },
   "keywords": [],
   "author": "",

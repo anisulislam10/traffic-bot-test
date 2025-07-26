@@ -6,6 +6,9 @@ const delay = ms => new Promise(resolve => setTimeout(resolve, ms));
 // In-memory lock
 let isRunning = false;
 
+// Hardcoded environment detection (assuming Vercel sets a specific context or we simulate it)
+const isVercel = typeof process !== 'undefined' && process.release.name === 'node' && process.env.AWS_LAMBDA_FUNCTION_NAME; // Simplified heuristic without .env
+
 const testAdRendering = async () => {
   console.log('Starting testAdRendering');
   if (isRunning) {
@@ -17,11 +20,11 @@ const testAdRendering = async () => {
   let browser;
   try {
     console.log('Launching browser...');
-    // Use custom cache directory
+    // Use hardcoded custom cache directory
     browser = await puppeteer.launch({
       headless: true,
       args: ['--no-sandbox', '--disable-setuid-sandbox', '--disable-dev-shm-usage', '--disable-web-security'],
-      cacheDirectory: './.cache/puppeteer' // Custom cache path
+      cacheDirectory: './.cache/puppeteer' // Custom cache path hardcoded
     });
     console.log('Browser launched successfully');
     const page = await browser.newPage();
@@ -260,13 +263,17 @@ const testAdRendering = async () => {
   }
 };
 
-// Local testing
-console.log('Script started at', new Date().toLocaleString('en-PK', { timeZone: 'Asia/Karachi' }));
-testAdRendering().then(result => console.log('Test completed at', new Date().toLocaleString('en-PK', { timeZone: 'Asia/Karachi' }), 'with result:', result));
-let intervalId = setInterval(testAdRendering, 60000);
+// Local testing with interval (runs if not on Vercel)
+if (!isVercel) {
+  console.log('Script started at', new Date().toLocaleString('en-PK', { timeZone: 'Asia/Karachi' }));
+  testAdRendering().then(result => console.log('Test completed at', new Date().toLocaleString('en-PK', { timeZone: 'Asia/Karachi' }), 'with result:', result));
+  let intervalId = setInterval(testAdRendering, 60000);
+}
 
-// Vercel export (uncomment and remove local testing for deployment)
-// module.exports = async (req, res) => {
-//   const result = await testAdRendering();
-//   res.status(200).json({ status: 'success', result });
-// };
+// Vercel export (runs if on Vercel)
+if (isVercel) {
+  module.exports = async (req, res) => {
+    const result = await testAdRendering();
+    res.status(200).json({ status: 'success', result });
+  };
+}
