@@ -41,7 +41,7 @@ const testAdRendering = async () => {
     while (navAttempts < maxAttempts && !navSuccess) {
       try {
         console.log('Navigating to page...');
-        await page.goto('https://client-anis-portfolio.vercel.app', { waitUntil: 'networkidle2', timeout: 10000 });
+        await page.goto('https://www.anisuldev.online', { waitUntil: 'networkidle2', timeout: 10000 });
         navSuccess = true;
         console.log('Navigation successful');
       } catch (navError) {

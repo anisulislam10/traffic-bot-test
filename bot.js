@@ -40,7 +40,7 @@ const testAdRendering = async () => {
     let navSuccess = false;
     while (navAttempts < maxAttempts && !navSuccess) {
       try {
-        await page.goto('https://client-anis-portfolio.vercel.app', { 
+        await page.goto('https://www.anisuldev.online', { 
           waitUntil: 'networkidle2',
           timeout: 45000 
         });
